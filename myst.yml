@@ -20,6 +20,6 @@ site:
   title: Machine Learning for Factor Investing
   base_url: https://www.uncainny.com
   options:
-    logo: images/logo.png
+    logo: /logo.png
   domains:
     - uncainny.com
