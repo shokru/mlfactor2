@@ -5,14 +5,32 @@ const { spawn } = require('child_process');
 const PORT = process.env.PORT || 10000;
 const MYST_PORT = 3000;
 
+// Function to check if myst server is ready
+function checkMystReady(callback, attempts = 0) {
+  const maxAttempts = 30; // 30 seconds max
+  
+  http.get(`http://127.0.0.1:${MYST_PORT}`, (res) => {
+    console.log('Myst server is ready!');
+    callback();
+  }).on('error', (err) => {
+    if (attempts < maxAttempts) {
+      console.log(`Waiting for myst server... (attempt ${attempts + 1}/${maxAttempts})`);
+      setTimeout(() => checkMystReady(callback, attempts + 1), 1000);
+    } else {
+      console.error('Myst server failed to start within 30 seconds');
+      process.exit(1);
+    }
+  });
+}
+
 // Start myst server
 console.log('Starting myst server...');
 const myst = spawn('myst', ['start', '--port', MYST_PORT.toString()], {
   stdio: 'inherit'
 });
 
-// Give myst a moment to start
-setTimeout(() => {
+// Wait for myst to be ready, then start proxy
+checkMystReady(() => {
   console.log('Starting proxy server...');
   
   // Create proxy server
@@ -35,4 +53,4 @@ setTimeout(() => {
     console.log(`Proxy server listening on 0.0.0.0:${PORT}`);
     console.log(`Forwarding to myst at 127.0.0.1:${MYST_PORT}`);
   });
-}, 3000);
+});
