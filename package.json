@@ -1,14 +1,15 @@
 {
   "name": "myst-site",
   "version": "1.0.0",
-  "description": "MyST site deployment for Render",
+  "description": "MyST site deployment for Railway",
   "scripts": {
-    "start": "myst start --keep-host",
-    "build": "myst build --html",
-    "dev": "myst start"
+    "start": "node server.js",
+    "dev": "myst start",
+    "build": "myst build --html"
   },
   "dependencies": {
-    "mystmd": "^1.3.0"
+    "mystmd": "^1.3.0",
+    "http-proxy": "^1.18.1"
   },
   "engines": {
     "node": ">=18.0.0"

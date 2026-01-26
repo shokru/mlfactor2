@@ -1,91 +1,127 @@
-# MyST Site Deployment for Render (v2)
+# MyST Site Deployment for Railway
 
-This package contains the corrected configuration files for deploying a MyST site on Render.
+This package deploys your MyST site on Railway using a proxy wrapper that solves the localhost binding issue.
 
-## Key Fix
+## How It Works
 
-MyST uses the `HOST` environment variable combined with `--keep-host` flag (not `--host`):
+MyST's server only binds to `localhost`, which doesn't work on cloud platforms. This solution:
 
-```bash
-# Correct way to bind to external interface:
-HOST=0.0.0.0 myst start --keep-host
-```
+1. Starts MyST on `localhost:3000` (internal)
+2. Runs a proxy server on `0.0.0.0:$PORT` (Railway's assigned port)
+3. Forwards all HTTP and WebSocket traffic to MyST
+
+This preserves MyST's full dynamic functionality including live reload.
 
 ## Files Included
 
-- `package.json` - Node.js dependencies and scripts (corrected)
-- `render.yaml` - Render deployment configuration with proper env vars
+| File | Purpose |
+|------|---------|
+| `package.json` | Dependencies and scripts |
+| `server.js` | Proxy wrapper that bridges MyST to the public internet |
+| `railway.json` | Railway-specific configuration |
+| `.gitignore` | Ignores build artifacts |
 
 ## Deployment Instructions
 
-### Option A: Using Render Blueprint (Recommended)
+### Step 1: Add Files to Your Repository
 
-1. **Add these files to your repository root** (alongside your existing MyST content)
-2. Go to [Render Dashboard](https://dashboard.render.com/)
-3. Click **New** → **Blueprint**
-4. Connect your repository
-5. Render will automatically detect `render.yaml` and configure the service
+Copy these files to your repository root (alongside your existing MyST content like `myst.yml`, markdown files, etc.)
 
-### Option B: Manual Configuration
+### Step 2: Deploy to Railway
 
-1. **Add `package.json`** to your repository root
-2. Go to [Render Dashboard](https://dashboard.render.com/)
-3. Click **New** → **Web Service**
-4. Connect your repository
-5. Configure:
-   - **Runtime**: Node
-   - **Build Command**: `npm install`
-   - **Start Command**: `npm start`
-6. **Add Environment Variables**:
-   - `HOST` = `0.0.0.0`
-   - `PORT` = `3000` (or let Render set it)
-7. Click **Create Web Service**
+**Option A: Via GitHub (Recommended)**
 
-## Important: Render Port Handling
+1. Push your changes to GitHub
+2. Go to [railway.app](https://railway.app) and sign in
+3. Click **"New Project"** → **"Deploy from GitHub repo"**
+4. Select your repository
+5. Railway will auto-detect and deploy
 
-Render assigns a dynamic port via the `PORT` environment variable. However, MyST may not automatically use it. If deployment fails:
+**Option B: Via Railway CLI**
 
-1. Check Render logs for which port MyST is listening on
-2. If MyST ignores `PORT`, you may need to use the static HTML build instead (see below)
+```bash
+# Install Railway CLI
+npm install -g @railway/cli
 
-## Alternative: Static Build (Most Reliable)
+# Login
+railway login
 
-If the dynamic server doesn't work, switch to static deployment:
+# Initialize and deploy
+railway init
+railway up
 
-**In Render Dashboard:**
-1. Create a **Static Site** (not Web Service)
-2. Set:
-   - **Build Command**: `npm install && npm run build`
-   - **Publish Directory**: `_build/html`
-
-**Or update `render.yaml`:**
-```yaml
-services:
-  - type: static
-    name: myst-site
-    buildCommand: npm install && npm run build
-    staticPublishPath: _build/html
+# Get your public URL
+railway domain
 ```
+
+### Step 3: Verify Deployment
+
+1. Go to your Railway dashboard
+2. Click on your service
+3. Check the **Deployments** tab for logs
+4. Click the generated domain to view your site
+
+## Environment Variables (Optional)
+
+Railway automatically sets `PORT`. No additional environment variables are required.
+
+If you need to customize, you can add these in Railway's dashboard under **Variables**:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | (set by Railway) | Public-facing port |
 
 ## Local Development
 
 ```bash
+# Install dependencies
 npm install
+
+# Run MyST directly (recommended for local dev)
 npm run dev
+
+# Or test the proxy wrapper locally
+npm start
 ```
 
 ## Troubleshooting
 
-### "Port already in use" or connection refused
-- Make sure `HOST=0.0.0.0` is set
-- Check that the `--keep-host` flag is being used
+### "502 Bad Gateway" or "MyST server is starting up"
 
-### Site not accessible
-- Verify in Render logs that the server started successfully
-- Check which port MyST is listening on
-- If using dynamic port from Render, MyST might not respect it—use static build instead
+This is normal for the first few seconds after deployment. MyST needs time to initialize. Wait 10-15 seconds and refresh.
+
+### Build fails
+
+- Make sure you have a valid `myst.yml` in your repository
+- Check that your markdown files are valid
+
+### Site loads but pages are missing
+
+- Verify your `myst.yml` configuration
+- Check that all referenced files exist
+
+### WebSocket errors in console
+
+These are usually harmless in production. Live reload is primarily for development.
+
+## Project Structure
+
+Your repository should look like this:
+
+```
+your-repo/
+├── package.json      # From this package
+├── server.js         # From this package
+├── railway.json      # From this package
+├── .gitignore        # From this package
+├── myst.yml          # Your MyST config
+├── index.md          # Your content
+├── chapter1.md       # Your content
+└── ...               # Other MyST content
+```
 
 ## Resources
 
-- [MyST CLI Reference](https://mystmd.org/cli/reference)
-- [Render Documentation](https://render.com/docs)
+- [Railway Documentation](https://docs.railway.app)
+- [MyST Documentation](https://mystmd.org)
+- [Railway Node.js Guide](https://docs.railway.app/guides/nodejs)
