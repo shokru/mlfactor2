@@ -1,0 +1,31 @@
+# MyST Project Configuration
+# Adjust these settings to match your project
+
+version: 1
+project:
+  title: My MyST Site
+  # Uncomment and adjust as needed:
+  # description: A description of your site
+  # authors:
+  #   - name: Your Name
+  #     email: your@email.com
+  # keywords:
+  #   - myst
+  #   - documentation
+
+site:
+  title: My MyST Site
+  # Base URL - leave empty for Render (it handles routing)
+  # If you have issues, try setting this to your Render URL:
+  # base_url: https://your-app-name.onrender.com
+  
+  # Navigation and table of contents
+  # Uncomment and customize:
+  # nav:
+  #   - file: index.md
+  #   - file: chapter1.md
+  
+  # Template options
+  options:
+    favicon: favicon.ico
+    # logo: logo.png
