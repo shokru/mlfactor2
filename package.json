@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "MyST site deployment for Render",
   "scripts": {
-    "start": "myst start --port $PORT --host 0.0.0.0",
+    "start": "myst start --keep-host",
     "build": "myst build --html",
     "dev": "myst start"
   },

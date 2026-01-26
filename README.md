@@ -1,12 +1,20 @@
-# MyST Site Deployment for Render
+# MyST Site Deployment for Render (v2)
 
-This package contains the configuration files needed to deploy a MyST site on Render.
+This package contains the corrected configuration files for deploying a MyST site on Render.
+
+## Key Fix
+
+MyST uses the `HOST` environment variable combined with `--keep-host` flag (not `--host`):
+
+```bash
+# Correct way to bind to external interface:
+HOST=0.0.0.0 myst start --keep-host
+```
 
 ## Files Included
 
-- `package.json` - Node.js dependencies and scripts
-- `render.yaml` - Render deployment configuration (Blueprint)
-- `myst.yml` - Sample MyST configuration (customize for your project)
+- `package.json` - Node.js dependencies and scripts (corrected)
+- `render.yaml` - Render deployment configuration with proper env vars
 
 ## Deployment Instructions
 
@@ -28,54 +36,56 @@ This package contains the configuration files needed to deploy a MyST site on Re
    - **Runtime**: Node
    - **Build Command**: `npm install`
    - **Start Command**: `npm start`
-6. Click **Create Web Service**
+6. **Add Environment Variables**:
+   - `HOST` = `0.0.0.0`
+   - `PORT` = `3000` (or let Render set it)
+7. Click **Create Web Service**
 
-## Important Notes
+## Important: Render Port Handling
 
-### Your `myst.yml`
+Render assigns a dynamic port via the `PORT` environment variable. However, MyST may not automatically use it. If deployment fails:
 
-If you already have a `myst.yml`, you probably don't need the sample one included here. Just make sure:
+1. Check Render logs for which port MyST is listening on
+2. If MyST ignores `PORT`, you may need to use the static HTML build instead (see below)
 
-- Remove or comment out any `base_url` setting that points to localhost
-- If you need a base URL, set it to your Render app URL (e.g., `https://your-app.onrender.com`)
+## Alternative: Static Build (Most Reliable)
 
-### If Deployment Fails
+If the dynamic server doesn't work, switch to static deployment:
 
-1. **Check the logs** in Render dashboard
-2. **Common issues**:
-   - Node version too old: Render uses Node 18+ by default, which should work
-   - Missing dependencies: Make sure `mystmd` is in `package.json`
-   - Port binding: The `$PORT` variable is automatically set by Render
-
-### Alternative: Static Build
-
-If the dynamic server approach doesn't work, you can switch to static deployment:
-
-1. Change `render.yaml` to use static site hosting:
-   ```yaml
-   services:
-     - type: static
-       name: myst-site
-       buildCommand: npm install && npm run build
-       staticPublishPath: _build/html
-   ```
-
-2. Or manually configure a Static Site in Render with:
+**In Render Dashboard:**
+1. Create a **Static Site** (not Web Service)
+2. Set:
    - **Build Command**: `npm install && npm run build`
    - **Publish Directory**: `_build/html`
 
-## Local Development
+**Or update `render.yaml`:**
+```yaml
+services:
+  - type: static
+    name: myst-site
+    buildCommand: npm install && npm run build
+    staticPublishPath: _build/html
+```
 
-To test locally before deploying:
+## Local Development
 
 ```bash
 npm install
 npm run dev
 ```
 
-This runs `myst start` on localhost:3000.
+## Troubleshooting
 
-## Support
+### "Port already in use" or connection refused
+- Make sure `HOST=0.0.0.0` is set
+- Check that the `--keep-host` flag is being used
 
-- [MyST Documentation](https://mystmd.org/)
+### Site not accessible
+- Verify in Render logs that the server started successfully
+- Check which port MyST is listening on
+- If using dynamic port from Render, MyST might not respect it—use static build instead
+
+## Resources
+
+- [MyST CLI Reference](https://mystmd.org/cli/reference)
 - [Render Documentation](https://render.com/docs)

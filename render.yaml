@@ -12,6 +12,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # HOST must be 0.0.0.0 to accept external connections
+      - key: HOST
+        value: 0.0.0.0
+      # PORT is automatically set by Render, but MyST needs it explicitly
+      - key: PORT
+        value: 3000
     # Uncomment below if you need a custom domain
     # domains:
     #   - your-domain.com
