@@ -1,11 +1,9 @@
 /**
  * MyST Server Wrapper for Railway/Cloud Deployment
  * 
- * This script solves the problem where MyST only binds to localhost.
- * It starts MyST on localhost, then creates an HTTP proxy that binds
- * to 0.0.0.0 (all interfaces) so Railway can route traffic to it.
- * 
- * It also rewrites localhost:3100 URLs in JSON responses to fix asset loading.
+ * This script solves two problems:
+ * 1. MyST only binds to localhost - we proxy to make it publicly accessible
+ * 2. MyST embeds localhost:3100 URLs in HTML - we rewrite them to the public URL
  */
 
 const http = require('http');
@@ -44,7 +42,54 @@ mystProcess.on('close', (code) => {
   process.exit(code);
 });
 
-// Create proxy server for normal requests
+// Helper function to make a request to MyST and rewrite localhost URLs
+function proxyWithRewrite(req, res, contentType) {
+  const options = {
+    hostname: 'localhost',
+    port: MYST_PORT,
+    path: req.url,
+    method: req.method,
+    headers: { ...req.headers, host: `localhost:${MYST_PORT}` }
+  };
+  
+  const proxyReq = http.request(options, (proxyRes) => {
+    let body = [];
+    
+    proxyRes.on('data', chunk => body.push(chunk));
+    proxyRes.on('end', () => {
+      let content = Buffer.concat(body).toString('utf8');
+      
+      // Get the public host from the request
+      const host = req.headers.host || 'localhost';
+      const protocol = req.headers['x-forwarded-proto'] || 'https';
+      
+      // Rewrite all localhost:3100 URLs to the public URL
+      content = content.replace(/http:\/\/localhost:3100/g, `${protocol}://${host}`);
+      
+      // Copy safe headers
+      const skipHeaders = ['content-length', 'content-encoding', 'transfer-encoding'];
+      Object.keys(proxyRes.headers).forEach(key => {
+        if (!skipHeaders.includes(key.toLowerCase())) {
+          res.setHeader(key, proxyRes.headers[key]);
+        }
+      });
+      
+      res.statusCode = proxyRes.statusCode;
+      res.end(content);
+    });
+  });
+  
+  proxyReq.on('error', (err) => {
+    console.error('Proxy error:', err.message);
+    res.writeHead(502);
+    res.end('Error fetching from MyST');
+  });
+  
+  // Forward request body if present
+  req.pipe(proxyReq);
+}
+
+// Create proxy server for binary/non-rewritable requests
 const proxy = httpProxy.createProxyServer({
   target: `http://localhost:${MYST_PORT}`,
   ws: true
@@ -60,47 +105,21 @@ proxy.on('error', (err, req, res) => {
 
 // Create HTTP server that binds to all interfaces
 const server = http.createServer((req, res) => {
-  // For config.json, we need to intercept and rewrite localhost URLs
-  if (req.url === '/config.json' || req.url.startsWith('/config.json?')) {
-    const options = {
-      hostname: 'localhost',
-      port: MYST_PORT,
-      path: req.url,
-      method: req.method,
-      headers: { ...req.headers, host: `localhost:${MYST_PORT}` }
-    };
-    
-    const proxyReq = http.request(options, (proxyRes) => {
-      let body = [];
-      
-      proxyRes.on('data', chunk => body.push(chunk));
-      proxyRes.on('end', () => {
-        let content = Buffer.concat(body).toString('utf8');
-        
-        // Get the public host from the request
-        const host = req.headers.host || 'localhost';
-        const protocol = req.headers['x-forwarded-proto'] || 'https';
-        
-        // Rewrite localhost:3100 URLs to the public URL
-        content = content.replace(/http:\/\/localhost:3100/g, `${protocol}://${host}`);
-        
-        // Set response headers
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Cache-Control', 'no-cache');
-        res.statusCode = proxyRes.statusCode;
-        res.end(content);
-      });
-    });
-    
-    proxyReq.on('error', (err) => {
-      console.error('Config proxy error:', err.message);
-      res.writeHead(502);
-      res.end('Error fetching config');
-    });
-    
-    proxyReq.end();
+  const url = req.url || '/';
+  
+  // Determine if this request needs URL rewriting
+  // HTML pages and config.json contain localhost:3100 references
+  const needsRewrite = 
+    url === '/' ||
+    url === '/config.json' ||
+    url.startsWith('/config.json?') ||
+    url.match(/^\/[^.]*$/) ||  // Pages without extensions (like /chap_00_preface)
+    url.endsWith('.html');
+  
+  if (needsRewrite) {
+    proxyWithRewrite(req, res);
   } else {
-    // For all other requests, proxy normally
+    // For static assets (JS, CSS, images), proxy without modification
     proxy.web(req, res);
   }
 });
@@ -115,7 +134,7 @@ setTimeout(() => {
   server.listen(PUBLIC_PORT, '0.0.0.0', () => {
     console.log(`\n✅ Proxy server listening on 0.0.0.0:${PUBLIC_PORT}`);
     console.log(`   Forwarding to MyST at localhost:${MYST_PORT}`);
-    console.log(`   Rewriting config.json to fix asset URLs`);
+    console.log(`   Rewriting localhost:3100 URLs in HTML responses`);
     console.log(`\n🌐 Your site should be accessible now!\n`);
   });
 }, 3000);
