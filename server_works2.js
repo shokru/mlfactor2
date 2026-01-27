@@ -21,8 +21,7 @@ console.log(`MyST internal port: ${MYST_PORT}`);
 // Start MyST in the background
 const mystProcess = spawn('npx', ['myst', 'start', '--port', String(MYST_PORT)], {
   stdio: ['ignore', 'pipe', 'pipe'],
-  shell: true,
-  env: { ...process.env, HOST: undefined }  // Remove HOST variable
+  shell: true
 });
 
 mystProcess.stdout.on('data', (data) => {
