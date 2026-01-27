@@ -16,7 +16,7 @@ const zlib = require('zlib');
 
 // Railway provides PORT env var; MyST will use its default (3000)
 const PUBLIC_PORT = process.env.PORT || 8080;
-const MYST_PORT = 3100;
+const MYST_PORT = 3000;
 
 // Get the public URL from Railway environment
 // Railway sets RAILWAY_PUBLIC_DOMAIN automatically
@@ -59,19 +59,19 @@ function rewriteUrls(body, publicHost) {
   if (!publicHost) return body;
   
   // Patterns to replace localhost references
+  // MyST uses port 3000 for theme server and 3100 for content server
   const patterns = [
-    // http://localhost:3100 -> https://public-domain
+    // http://localhost:3100 -> https://public-domain (content server URLs in HTML)
     [/http:\/\/localhost:3100/g, `https://${publicHost}`],
-    // http://localhost:${MYST_PORT} -> https://public-domain  
-    [new RegExp(`http://localhost:${MYST_PORT}`, 'g'), `https://${publicHost}`],
     // //localhost:3100 -> //public-domain
     [/\/\/localhost:3100/g, `//${publicHost}`],
-    // Also handle 127.0.0.1
-    [/http:\/\/127\.0\.0\.1:3100/g, `https://${publicHost}`],
-    [new RegExp(`http://127\\.0\\.0\\.1:${MYST_PORT}`, 'g'), `https://${publicHost}`],
-    // Catch any other common MyST ports just in case
+    // http://localhost:3000 -> https://public-domain (theme server URLs)
     [/http:\/\/localhost:3000/g, `https://${publicHost}`],
+    // //localhost:3000 -> //public-domain
     [/\/\/localhost:3000/g, `//${publicHost}`],
+    // Also handle 127.0.0.1 variants
+    [/http:\/\/127\.0\.0\.1:3100/g, `https://${publicHost}`],
+    [/http:\/\/127\.0\.0\.1:3000/g, `https://${publicHost}`],
   ];
   
   let result = body;
