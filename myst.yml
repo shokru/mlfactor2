@@ -13,7 +13,15 @@ project:
     - file: chap_01_notations.ipynb
     - file: chap_02_introduction.ipynb
     - file: chap_03_asset_pricing.ipynb
+    - file: chap_04_data_processing.ipynb
+    - file: chap_05_lasso.ipynb
+    - file: chap_06_trees.ipynb
     - file: bibliography.md
+  exports:
+    - format: pdf  
+  numbering:
+    equation:
+      template: "%s.%s"  # chapter.equation format  
 
 site:
   template: book-theme
